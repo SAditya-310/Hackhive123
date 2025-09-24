@@ -2,13 +2,23 @@ import express from 'express';
 import mysql from 'mysql2';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
 app.use(express.json());
+app.use(express.static(__dirname));
 
 // MySQL Connection
 const db = mysql.createConnection({
@@ -22,9 +32,30 @@ const db = mysql.createConnection({
 db.connect((err) => {
   if (err) {
     console.error('DB connection error:', err);
-    return;
+    console.log('Note: Database connection failed. The app will work with localStorage fallback.');
+  } else {
+    console.log('Connected to MySQL database');
+    
+    // Create users table if it doesn't exist
+    const createTableQuery = `
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        role VARCHAR(50) NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    
+    db.query(createTableQuery, (err) => {
+      if (err) {
+        console.error('Error creating users table:', err);
+      } else {
+        console.log('Users table ready');
+      }
+    });
   }
-  console.log('Connected to MySQL database');
 });
 
 // ====== Routes ======
@@ -43,7 +74,8 @@ app.post('/signup', (req, res) => {
       if (err.code === 'ER_DUP_ENTRY') {
         return res.status(400).json({ message: 'Email already exists' });
       }
-      return res.status(500).json({ message: err.message });
+      console.error('Signup error:', err);
+      return res.status(500).json({ message: 'Database error occurred' });
     }
     res.json({ message: 'Signup successful', userId: result.insertId });
   });
@@ -59,7 +91,10 @@ app.post('/login', (req, res) => {
 
   const query = 'SELECT * FROM users WHERE email = ? AND password = ?';
   db.query(query, [email, password], (err, results) => {
-    if (err) return res.status(500).json({ message: err.message });
+    if (err) {
+      console.error('Login error:', err);
+      return res.status(500).json({ message: 'Database error occurred' });
+    }
 
     if (results.length > 0) {
       res.json({ message: 'Login successful', user: results[0] });
@@ -71,10 +106,10 @@ app.post('/login', (req, res) => {
 
 // Test route
 app.get('/', (req, res) => {
-  res.send('Node.js backend is running!');
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on http://0.0.0.0:${PORT}`);
 });

@@ -1,4 +1,4 @@
-import { loginUser, signupUser } from "./api.js";
+import { login, signup } from "./api.js";
 
 const loginTab = document.getElementById("loginTab");
 const signupTab = document.getElementById("signupTab");
@@ -31,7 +31,7 @@ loginForm.addEventListener("submit", async (e) => {
   const password = document.getElementById("loginPassword").value;
 
   try {
-    const data = await loginUser({ email, password });
+    const data = await login(email, password);
     if (data.token) {
       localStorage.setItem("hackhive_token", data.token);
       localStorage.setItem("hackhive_user", JSON.stringify(data.user));
@@ -57,7 +57,7 @@ signupForm.addEventListener("submit", async (e) => {
   const role = document.getElementById("signupRole").value;
 
   try {
-    const data = await signupUser({ firstName, lastName, email, password, role });
+    const data = await signup(`${firstName} ${lastName}`, email, role, password);
     if (data.token) {
       localStorage.setItem("hackhive_token", data.token);
       localStorage.setItem("hackhive_user", JSON.stringify(data.user));

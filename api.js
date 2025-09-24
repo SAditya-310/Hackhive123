@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:5000"; // backend URL
+const BASE_URL = window.location.origin; // Use current domain for API calls
 
 // Signup function
 export async function signup(name, email, role, password) {
